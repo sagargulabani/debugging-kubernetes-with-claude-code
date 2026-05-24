@@ -1,0 +1,31 @@
+# Scenario 1 workload.
+#
+# 8 replicas, each requesting 800m CPU + 512Mi memory. With 2 t3.medium nodes
+# (~1.5 vCPU usable per node after kube-system overhead), only ~3-4 of these
+# can be scheduled. The rest stay Pending, which triggers Cluster Autoscaler.
+#
+# CAS will try to scale the node group from 2 -> 3 (or 4) and fail with
+# AccessDenied calling autoscaling:SetDesiredCapacity, because the IAM policy
+# in iam-autoscaler.tf intentionally omits the write permissions.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hog
+  namespace: demo
+spec:
+  replicas: 8
+  selector:
+    matchLabels:
+      app: hog
+  template:
+    metadata:
+      labels:
+        app: hog
+    spec:
+      containers:
+        - name: pause
+          image: registry.k8s.io/pause:3.10
+          resources:
+            requests:
+              cpu: 800m
+              memory: 512Mi
